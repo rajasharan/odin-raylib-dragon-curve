@@ -5,7 +5,6 @@
 package example
 
 import fmt "core:fmt"
-import math "core:math"
 import rl "vendor:raylib"
 
 main :: proc() {
@@ -37,6 +36,7 @@ main :: proc() {
     b := end_point
     current_index := 1
     remaining :f32 = 0
+    mdown_time :f32 = 0
 
     pos := rl.Vector2{}
     is_panning := false
@@ -49,19 +49,30 @@ main :: proc() {
         // updates
         dt := rl.GetFrameTime()
 
+        // recenter the camera if out-of-bounds
+        if rl.IsMouseButtonReleased(.LEFT) && !is_panning {
+            b_world := rl.GetWorldToScreen2D(b, camera)
+            camera.offset -= (b_world - rl.Vector2{W/2, H/2})
+            mdown_time = 0
+        }
+
         if rl.IsMouseButtonDown(.LEFT) {
-            if !is_panning {
-                is_panning = true
-                prev_mouse_pos = rl.GetMousePosition()
-            } else {
-                current_mouse_pos = rl.GetMousePosition()
-                mouse_delta :=  prev_mouse_pos - current_mouse_pos
-                camera.offset -= mouse_delta
-                prev_mouse_pos = current_mouse_pos
+            mdown_time += dt
+            if mdown_time > 0.3 { // 300ms threshold before panning
+                if !is_panning {
+                    is_panning = true
+                    prev_mouse_pos = rl.GetMousePosition()
+                } else {
+                    current_mouse_pos = rl.GetMousePosition()
+                    mouse_delta :=  prev_mouse_pos - current_mouse_pos
+                    camera.offset -= mouse_delta
+                    prev_mouse_pos = current_mouse_pos
+                }
             }
         }
         else if rl.IsMouseButtonUp(.LEFT) && is_panning {
             is_panning = false
+            mdown_time = 0
         }
 
         // drawing
@@ -109,6 +120,7 @@ main :: proc() {
             }
         }
         rl.DrawText("Drag with mouse\nto pan around", 10, 10, 15, rl.GRAY)
+        rl.DrawText("Left click to recenter", 10, 50, 15, rl.GRAY)
         rl.DrawFPS(W-150, 10)
         rl.DrawText(rl.TextFormat("points: %d", current_index), W-150, 30, 15, rl.RAYWHITE)
         rl.EndDrawing()
